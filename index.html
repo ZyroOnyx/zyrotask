@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zyro Task</title>
+    <style>
+        :root { 
+            --bg: #ffffff; --text: #000000; 
+            --red: #ff4d4d; --yellow: #ffd933; --green: #2ecc71;
+            --border: 4px solid #000;
+            --shadow: 8px 8px 0px #000;
+            --shadow-sm: 4px 4px 0px #000;
+        }
+        * { box-sizing: border-box; font-family: 'Inter', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--text); height: 100%; }
+
+        /* --- AUTH / PROFILE SCREEN --- */
+        #profile-screen {
+            position: fixed; inset: 0; background: #fff; z-index: 10000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .hero-title { font-weight: 900; font-size: clamp(2.5rem, 10vw, 5rem); letter-spacing: -4px; margin-bottom: 40px; text-transform: uppercase; border-bottom: 10px solid #000; }
+        .profile-grid { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; padding: 20px; }
+        .profile-card { width: 150px; text-align: center; cursor: pointer; position: relative; }
+        .profile-avatar {
+            width: 120px; height: 120px; border: var(--border); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; font-weight: 900; background: #fff; box-shadow: var(--shadow);
+            margin: 0 auto 15px; transition: 0.1s; position: relative;
+        }
+        .profile-card:hover .profile-avatar { transform: translate(-4px, -4px); box-shadow: 12px 12px 0 #000; background: #000; color: #fff; }
+        
+        /* Delete Profile Action Badge */
+        .del-prof-badge {
+            position: absolute; top: 0; right: 10px; background: var(--red); color: #fff;
+            border: 3px solid #000; width: 32px; height: 32px; border-radius: 50%;
+            font-size: 1.2rem; font-weight: 900; display: flex; align-items: center; justify-content: center;
+            box-shadow: 2px 2px 0px #000; z-index: 15; transition: transform 0.1s;
+        }
+        .del-prof-badge:hover { transform: scale(1.15); background: #000; color: var(--red); }
+
+        /* --- MAIN UI --- */
+        #app { display: none; padding: 40px 20px; max-width: 1400px; margin: 0 auto; }
+        .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: var(--border); padding-bottom: 20px; }
+        .nav h1 { margin: 0; font-weight: 900; font-size: 1.5rem; text-transform: uppercase; }
+
+        /* --- INPUT AREA --- */
+        .input-bar { 
+            display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 15px; 
+            background: #fff; border: var(--border); padding: 20px; box-shadow: var(--shadow); margin-bottom: 50px;
+        }
+        .input-bar input { border: 3px solid #000; padding: 12px; font-weight: 700; outline: none; font-size: 1rem; }
+
+        .btn { 
+            background: #000; color: #fff; border: 3px solid #000; padding: 12px 25px; 
+            font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: var(--shadow-sm);
+        }
+        .btn:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #000; }
+        .btn.white { background: #fff; color: #000; }
+        .btn.onyx { background: #000; color: #fff; border-color: #000; position: relative; overflow: hidden; }
+        .btn.onyx::after { content: '✦'; position: absolute; right: 8px; top: 2px; font-size: 0.7rem; }
+
+        /* --- BOARD --- */
+        .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+        .col-header { font-weight: 900; font-size: 1.2rem; margin-bottom: 20px; border-left: 10px solid #000; padding-left: 15px; text-transform: uppercase; }
+        
+        .task-card {
+            border: var(--border); padding: 20px; margin-bottom: 20px; background: #fff; 
+            box-shadow: var(--shadow-sm); cursor: pointer; transition: 0.1s;
+        }
+        .task-card:hover { transform: translate(-3px, -3px); box-shadow: 7px 7px 0 #000; }
+        .task-card h3 { margin: 0 0 10px 0; font-weight: 900; line-height: 1.1; }
+        .task-meta { font-size: 0.75rem; font-weight: 800; opacity: 0.5; margin-bottom: 15px; }
+        
+        .status-tray { display: flex; gap: 8px; }
+        .s-btn { flex: 1; height: 12px; border: 2px solid #000; cursor: pointer; }
+        .s-btn.red { background: var(--red); }
+        .s-btn.yellow { background: var(--yellow); }
+        .s-btn.green { background: var(--green); }
+        .s-btn.active { border-width: 4px; box-shadow: inset 0 0 0 2px #fff; }
+
+        /* --- MODALS --- */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 20000;
+            display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal {
+            background: #fff; border: var(--border); padding: 40px; width: 100%; max-width: 600px;
+            box-shadow: 15px 15px 0 #000; max-height: 90vh; overflow-y: auto;
+        }
+
+        /* STAGES */
+        .stage-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 12px; border: 2px solid #000; }
+        .stage-input { flex: 1; border: none; font-weight: 700; outline: none; background: transparent; font-size: 0.9rem; }
+        .stage-btns { display: flex; gap: 5px; width: 80px; }
+
+        @media (max-width: 800px) { .input-bar { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <div id="profile-screen">
+        <div class="hero-title">ZYRO Task</div>
+        <div class="profile-grid" id="profile-grid"></div>
+    </div>
+
+    <div id="app">
+        <div class="nav">
+            <h1>ZYRO // <span id="user-name">...</span></h1>
+            <button class="btn white" style="font-size: 0.7rem;" onclick="location.reload()">Switch Account</button>
+        </div>
+
+        <div class="input-bar">
+            <input type="text" id="task-name" placeholder="New Assignment...">
+            <input type="date" id="task-date">
+            <input type="url" id="task-link" placeholder="Resource Link (Optional)">
+            <button class="btn" onclick="addNewTask()">ADD</button>
+        </div>
+
+        <div class="board">
+            <div><div class="col-header">Urgent</div><div id="list-urgent"></div></div>
+            <div><div class="col-header">Stable</div><div id="list-stable"></div></div>
+            <div><div class="col-header">Future</div><div id="list-future"></div></div>
+            <div><div class="col-header">Finished</div><div id="list-finished"></div></div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD ACCOUNT -->
+    <div class="overlay" id="modal-add-acc">
+        <div class="modal">
+            <h2 style="font-weight:900;">NEW PROFILE</h2>
+            <div style="display:flex; flex-direction:column; gap:15px;">
+                <input type="text" id="new-acc-name" placeholder="Your Name" style="padding:15px; border:3px solid #000; font-weight:800;">
+                <input type="password" id="new-acc-key" placeholder="Gemini API Key" style="padding:15px; border:3px solid #000; font-weight:800;">
+                <button class="btn" onclick="saveNewProfile()">Create Profile</button>
+                <button class="btn white" onclick="closeModal('modal-add-acc')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: TUTORIAL -->
+    <div class="overlay" id="modal-tutorial">
+        <div class="modal">
+            <h2 style="font-weight:900;">SYSTEM LOADED</h2>
+            <p style="font-weight:700; line-height:1.6;">
+                • Tasks sort by date automatically.<br>
+                • <b>Click</b> a task to open the Dashboard & manage stages.<br>
+                • <b>Hold</b> a task for 1 second to trigger Delete.<br>
+                • <b>Onyx AI</b> can generate sub-tasks for you.
+            </p>
+            <button class="btn" style="width:100%" onclick="finishTutorial()">Let's Work</button>
+        </div>
+    </div>
+
+    <!-- MODAL: DASHBOARD -->
+    <div class="overlay" id="modal-dash">
+        <div class="modal">
+            <h2 id="dash-title" style="margin:0; font-weight:900; text-transform:uppercase;">Task Title</h2>
+            <div id="dash-link-box" style="margin: 15px 0;"></div>
+
+            <div style="border-top: 5px solid #000; padding-top: 20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="margin:0; font-weight:900;">STAGES</h3>
+                    <button class="btn onyx" id="onyx-btn" onclick="generateOnyxStages()">Make with Onyx</button>
+                </div>
+                
+                <div id="stages-list"></div>
+                
+                <div style="display:flex; gap:10px; margin-top:20px;">
+                    <input type="text" id="manual-stage-input" placeholder="Add custom stage..." style="flex:1; padding:10px; border:2px solid #000; font-weight:700;">
+                    <button class="btn" onclick="addManualStage()">+</button>
+                </div>
+            </div>
+            
+            <button class="btn white" style="width:100%; margin-top:30px;" onclick="closeModal('modal-dash')">Close Dashboard</button>
+        </div>
+    </div>
+
+    <!-- MODAL: DELETE TASK -->
+    <div class="overlay" id="modal-delete">
+        <div class="modal" style="max-width:400px; text-align:center;">
+            <h2 style="color:var(--red); font-weight:900;">DELETE TASK?</h2>
+            <div style="display:flex; gap:10px;">
+                <button class="btn" style="flex:1; background:var(--red)" onclick="confirmDelete()">YES</button>
+                <button class="btn white" style="flex:1" onclick="closeModal('modal-delete')">NO</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DELETE PROFILE -->
+    <div class="overlay" id="modal-delete-profile">
+        <div class="modal" style="max-width:450px; text-align:center;">
+            <h2 style="color:var(--red); font-weight:900;">WIPE PROFILE?</h2>
+            <p style="font-weight:700;">This will permanently clear this profile and all of its tasks.</p>
+            <div style="display:flex; gap:10px;">
+                <button class="btn" style="flex:1; background:var(--red)" onclick="confirmDeleteProfile()">WIPE</button>
+                <button class="btn white" style="flex:1" onclick="closeModal('modal-delete-profile')">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+        let PROFILES = JSON.parse(localStorage.getItem('zyro_p_v3') || '[]');
+        let USER = null;
+        let TASKS = [];
+        let taskToDelete = null;
+        let profileToDeleteIndex = null;
+        let openTask = null;
+        let holdTimer = null;
+
+        const init = () => {
+            const grid = document.getElementById('profile-grid');
+            grid.innerHTML = '';
+            PROFILES.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = 'profile-card';
+                div.onclick = () => login(i);
+                
+                // Absolute-positioned deletion badge inside the card layout
+                div.innerHTML = `
+                    <div class="del-prof-badge" onclick="triggerDeleteProfile(event, ${i})">×</div>
+                    <div class="profile-avatar">${p.name[0].toUpperCase()}</div>
+                    <div style="font-weight:900;">${p.name.toUpperCase()}</div>
+                `;
+                grid.appendChild(div);
+            });
+            const add = document.createElement('div');
+            add.className = 'profile-card';
+            add.onclick = () => document.getElementById('modal-add-acc').style.display='flex';
+            add.innerHTML = `<div class="profile-avatar" style="border-style:dashed; color:#ccc;">+</div><div style="font-weight:900; color:#ccc;">NEW</div>`;
+            grid.appendChild(add);
+        };
+
+        window.saveNewProfile = () => {
+            const name = document.getElementById('new-acc-name').value.trim();
+            const key = document.getElementById('new-acc-key').value.trim();
+            if(name && key) {
+                PROFILES.push({ name, key, seenTut: false });
+                localStorage.setItem('zyro_p_v3', JSON.stringify(PROFILES));
+                location.reload();
+            }
+        };
+
+        // --- PROFILE REMOVAL ENGINE ---
+        window.triggerDeleteProfile = (e, index) => {
+            e.stopPropagation(); // Prevents logging into the account during click registration
+            profileToDeleteIndex = index;
+            document.getElementById('modal-delete-profile').style.display = 'flex';
+        };
+
+        window.confirmDeleteProfile = () => {
+            if(profileToDeleteIndex !== null) {
+                const profileName = PROFILES[profileToDeleteIndex].name;
+                
+                // Clear the workspace data array tied to this profile name
+                localStorage.removeItem(`tasks_v3_${profileName}`);
+                
+                // Splice out profile element and synchronize
+                PROFILES.splice(profileToDeleteIndex, 1);
+                localStorage.setItem('zyro_p_v3', JSON.stringify(PROFILES));
+                
+                profileToDeleteIndex = null;
+                closeModal('modal-delete-profile');
+                init(); // Refresh grid layout immediately
+            }
+        };
+
+        const login = (i) => {
+            USER = PROFILES[i];
+            TASKS = JSON.parse(localStorage.getItem(`tasks_v3_${USER.name}`) || '[]');
+            document.getElementById('profile-screen').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+            document.getElementById('user-name').innerText = USER.name;
+            if(!USER.seenTut) document.getElementById('modal-tutorial').style.display = 'flex';
+            renderBoard();
+        };
+
+        window.finishTutorial = () => {
+            USER.seenTut = true;
+            localStorage.setItem('zyro_p_v3', JSON.stringify(PROFILES));
+            closeModal('modal-tutorial');
+        };
+
+        window.addNewTask = () => {
+            const title = document.getElementById('task-name').value;
+            const date = document.getElementById('task-date').value;
+            const link = document.getElementById('task-link').value;
+            if(!title || !date) return;
+            TASKS.push({ id: Date.now(), title, date, link, status: 'red', stages: [] });
+            sync();
+            renderBoard();
+            document.getElementById('task-name').value = '';
+        };
+
+        const sync = () => localStorage.setItem(`tasks_v3_${USER.name}`, JSON.stringify(TASKS));
+        window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+
+        const renderBoard = () => {
+            const cols = { urgent: [], stable: [], future: [], finished: [] };
+            const today = new Date(); today.setHours(0,0,0,0);
+
+            TASKS.forEach(t => {
+                if(t.status === 'green') cols.finished.push(t);
+                else {
+                    const diff = Math.ceil((new Date(t.date) - today) / (1000 * 60 * 60 * 24));
+                    if(diff <= 3) cols.urgent.push(t);
+                    else if(diff < 15) cols.stable.push(t);
+                    else cols.future.push(t);
+                }
+            });
+
+            ['urgent', 'stable', 'future', 'finished'].forEach(c => {
+                const div = document.getElementById(`list-${c}`);
+                div.innerHTML = '';
+                cols[c].forEach(t => {
+                    const card = document.createElement('div');
+                    card.className = 'task-card';
+                    card.onmousedown = () => holdTimer = setTimeout(() => { taskToDelete=t.id; document.getElementById('modal-delete').style.display='flex'; }, 800);
+                    card.onmouseup = () => clearTimeout(holdTimer);
+                    card.onclick = (e) => { if(!e.target.classList.contains('s-btn')) openDashboard(t); };
+                    
+                    card.innerHTML = `
+                        <h3>${t.title}</h3>
+                        <div class="task-meta">DUE: ${t.date}</div>
+                        <div class="status-tray">
+                            <div class="s-btn red ${t.status==='red'?'active':''}" onclick="setTaskStat(${t.id},'red')"></div>
+                            <div class="s-btn yellow ${t.status==='yellow'?'active':''}" onclick="setTaskStat(${t.id},'yellow')"></div>
+                            <div class="s-btn green ${t.status==='green'?'active':''}" onclick="setTaskStat(${t.id},'green')"></div>
+                        </div>
+                    `;
+                    div.appendChild(card);
+                });
+            });
+        };
+
+        window.setTaskStat = (id, s) => { TASKS.find(x => x.id === id).status = s; sync(); renderBoard(); };
+        window.confirmDelete = () => { TASKS = TASKS.filter(x => x.id !== taskToDelete); sync(); renderBoard(); closeModal('modal-delete'); };
+
+        // --- STAGES / ONYX ---
+        const openDashboard = (t) => {
+            openTask = t;
+            document.getElementById('modal-dash').style.display = 'flex';
+            document.getElementById('dash-title').innerText = t.title;
+            const linkBox = document.getElementById('dash-link-box');
+            linkBox.innerHTML = t.link ? `<button class="btn white" style="width:100%" onclick="window.open('${t.link}')">Open Linked Resource ↗</button>` : '';
+            renderStages();
+        };
+
+        const renderStages = () => {
+            const list = document.getElementById('stages-list');
+            list.innerHTML = '';
+            openTask.stages.forEach((s, i) => {
+                const item = document.createElement('div');
+                item.className = 'stage-item';
+                item.innerHTML = `
+                    <input class="stage-input" value="${s.text}" onchange="editStage(${i}, this.value)">
+                    <div class="stage-btns">
+                        <div class="s-btn red ${s.status==='red'?'active':''}" onclick="setStageStat(${i},'red')"></div>
+                        <div class="s-btn yellow ${s.status==='yellow'?'active':''}" onclick="setStageStat(${i},'yellow')"></div>
+                        <div class="s-btn green ${s.status==='green'?'active':''}" onclick="setStageStat(${i},'green')"></div>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        };
+
+        window.editStage = (i, val) => { openTask.stages[i].text = val; sync(); };
+        window.setStageStat = (i, s) => { openTask.stages[i].status = s; sync(); renderStages(); };
+        window.addManualStage = () => {
+            const val = document.getElementById('manual-stage-input').value;
+            if(!val) return;
+            openTask.stages.push({ text: val, status: 'red' });
+            sync(); renderStages();
+            document.getElementById('manual-stage-input').value = '';
+        };
+
+        window.generateOnyxStages = async () => {
+            const btn = document.getElementById('onyx-btn');
+            btn.innerText = "Thinking...";
+            try {
+                const genAI = new GoogleGenerativeAI(USER.key);
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                const prompt = `Task: "${openTask.title}". Break this school assignment into 4 actionable sub-tasks. Return ONLY a JSON array of strings.`;
+                const result = await model.generateContent(prompt);
+                const steps = JSON.parse(result.response.text().replace(/```json|```/gi, "").trim());
+                steps.forEach(s => openTask.stages.push({ text: s, status: 'red' }));
+                sync(); renderStages();
+            } catch (e) { alert("Onyx failed. Check API Key."); }
+            btn.innerText = "Make with Onyx";
+        };
+
+        init();
+    </script>
+</body>
+</html>
